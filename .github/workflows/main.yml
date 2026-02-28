@@ -32,10 +32,17 @@ jobs:
           curl -O https://raw.githubusercontent.com/LOWERTOP/Shadowrocket/main/lazy.conf
           curl -O https://raw.githubusercontent.com/LOWERTOP/Shadowrocket/main/lazy_group.conf
 
+      - name: Prepare release
+        run: |
+          mkdir -p release
+          cp -r figure release/
+          cp *.conf release/
+          cp readme.md LICENSE release/
+
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           BRANCH: release
-          FOLDER: .
+          FOLDER: release
           commit-message : 'Nightly build'
 
