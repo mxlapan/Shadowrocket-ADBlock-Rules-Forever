@@ -40,16 +40,19 @@ jobs:
 
       - name: Prepare deploy
         run: |
-          mkdir -p deploy
-          cp -r rules deploy/rules
-          cp -r figure deploy/figure
-          cp readme.md deploy/
+          mkdir -p deploy/rules deploy/figure
+          cp rules/*.conf deploy/rules/
+          cp figure/*.png deploy/figure/
+          cp README.md deploy/
           cp LICENSE deploy/
 
       - name: Deploy to gh-pages
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          branch: gh-pages
-          folder: deploy
-          commit-message: 'Nightly build'
-          single-commit: true
+        run: |
+          cd deploy
+          git init
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git checkout --orphan gh-pages
+          git add -A
+          git commit -m 'Nightly build'
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" gh-pages
