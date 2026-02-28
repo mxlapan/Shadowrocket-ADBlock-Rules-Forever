@@ -1,58 +1,39 @@
-# -*- coding: utf-8 -*-
+"""下载并解析 GFWList，转换为 Shadowrocket 代理域名列表。"""
 
-#
-# 下载并解析最新版本的 GFWList
-# 对于混合性质的网站，尽量走代理（忽略了所有的@@指令）
-#
-# 从 https://github.com/Johnshall/cn-blocked-domain 中获取GFWList的补充
-# 感谢 https://github.com/Loyalsoldier/cn-blocked-domain
-#
-
-
-import time
-import requests
-import re
 import base64
+import re
+import time
+
+import requests
 
 
 unhandle_rules = []
 
-# ruleType for raw or base64
-def get_rule(rules_url, ruleType='raw'):
-    success = False
-    try_times = 0
+
+def get_rule(url, rule_type='raw'):
+    """下载规则源，支持 raw 和 base64 两种格式。"""
     r = None
-    while try_times < 5 and not success:
-        r = requests.get(rules_url)
-        if r.status_code != 200:
-            time.sleep(1)
-            try_times = try_times + 1
-        else:
-            success = True
+    for _ in range(5):
+        r = requests.get(url)
+        if r.status_code == 200:
             break
-
-    if not success:
-        raise Exception('error in request %s\n\treturn code: %d' % (rules_url, r.status_code) )
-
-    if ruleType == 'base64':
-        rule = base64.b64decode(r.text) \
-                .decode("utf-8") \
-                .replace('\\n', '\n')
+        time.sleep(1)
     else:
-        rule = r.text
+        raise Exception(f'请求失败 {url}\n\t状态码: {r.status_code}')
 
-    return rule
+    if rule_type == 'base64':
+        return base64.b64decode(r.text).decode('utf-8').replace('\\n', '\n')
+    return r.text
 
 
-def clear_format(rule):
+def parse_rules(raw_text):
+    """清洗原始规则文本，提取域名列表。"""
     rules = []
-
-    rule = rule.split('\n')
-    for row in rule:
+    for row in raw_text.split('\n'):
         row = row.strip()
 
-        # 注释 直接跳过
-        if row == '' or row.startswith('!') or row.startswith('@@') or row.startswith('[AutoProxy'):
+        # 跳过注释和例外规则
+        if not row or row.startswith('!') or row.startswith('@@') or row.startswith('[AutoProxy'):
             continue
 
         # 清除前缀
@@ -64,60 +45,56 @@ def clear_format(rule):
         row = row.rstrip('/^*')
 
         rules.append(row)
-
     return rules
 
 
-def filtrate_rules(rules, excludes=[]):
-    ret = []
+def filter_rules(rules, excludes=None):
+    """过滤规则：只保留合法域名，排除指定域名。"""
+    excludes = excludes or []
+    result = []
 
     for rule in rules:
-        rule0 = rule
+        original = rule
 
-        # only hostname
+        # 只取主机名部分
         if '/' in rule:
-            split_ret = rule.split('/')
-            rule = split_ret[0]
+            rule = rule.split('/')[0]
 
-        if not re.match('^[\w.-]+$', rule):
-            unhandle_rules.append(rule0)
+        if not re.match(r'^[\w.-]+$', rule):
+            unhandle_rules.append(original)
             continue
 
         if rule in excludes:
             continue
 
-        ret.append(rule)
+        result.append(rule)
 
-    ret = list( set(ret) )
-    ret.sort()
+    return sorted(set(result))
 
-    return ret
 
-def getURLs(url):
-    r = requests.get(url)
-    return r.text.split("\n")[:-1]
-
-# main
-
-rule = get_rule(rules_url='https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt', ruleType='base64')
-# 从 https://github.com/Johnshall/cn-blocked-domain 中获取GFWList的补充
+# 下载 GFWList 主源
+rule = get_rule(
+    'https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt',
+    rule_type='base64',
+)
+# 补充来源：https://github.com/Loyalsoldier/cn-blocked-domain
 rule += get_rule('https://raw.githubusercontent.com/Johnshall/cn-blocked-domain/release/domains.txt')
 
-rules = clear_format(rule)
+rules = parse_rules(rule)
 
+# 读取排除列表
 excludes = []
-with open('manual_gfwlist_excludes.txt', 'r', encoding='utf-8') as f:
-    for line in f.readlines():
-        if line[0] == "#" or line == "\n":
-            continue
-        excludes.append(line.strip())
+with open('data/manual_gfwlist_excludes.txt', 'r', encoding='utf-8') as f:
+    for line in f:
+        line = line.strip()
+        if line and not line.startswith('#'):
+            excludes.append(line)
 
-rules = filtrate_rules(rules, excludes)
+rules = filter_rules(rules, excludes)
+rules = sorted(set(rules))
 
-rules = list( set(rules) )
+with open('resultant/gfw.list', 'w', encoding='utf-8') as f:
+    f.write('\n'.join(rules))
 
-open('resultant/gfw.list', 'w', encoding='utf-8') \
-    .write('\n'.join(rules))
-
-open('resultant/gfw_unhandle.log', 'w', encoding='utf-8') \
-    .write('\n'.join(unhandle_rules))
+with open('resultant/gfw_unhandle.log', 'w', encoding='utf-8') as f:
+    f.write('\n'.join(unhandle_rules))

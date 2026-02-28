@@ -1,12 +1,12 @@
-# -*- coding: utf-8 -*-
+"""为每个规则文件生成对应的二维码图片。"""
 
 import os
 import subprocess
+
 import qrcode
 
-
 # 规则文件名列表（与 build_confs.py 保持一致，加上 lazy 规则）
-conf_names = [
+CONF_NAMES = [
     'sr_top500_banlist_ad',
     'sr_top500_banlist',
     'sr_top500_whitelist_ad',
@@ -23,7 +23,7 @@ conf_names = [
 
 
 def get_github_owner():
-    """从 git remote 获取仓库 owner 名称"""
+    """从 git remote 获取仓库 owner。"""
     try:
         result = subprocess.run(
             ['git', 'config', '--get', 'remote.origin.url'],
@@ -43,7 +43,7 @@ def get_github_owner():
 
 
 def get_repo_name():
-    """从 git remote 获取仓库名称"""
+    """从 git remote 获取仓库名称。"""
     try:
         result = subprocess.run(
             ['git', 'config', '--get', 'remote.origin.url'],
@@ -66,23 +66,23 @@ def generate_qrcodes():
     repo = get_repo_name()
 
     if not owner:
-        print('Warning: Could not detect GitHub owner, using default "mxlapan"')
+        print('警告: 无法检测 GitHub owner，使用默认值 "mxlapan"')
         owner = 'mxlapan'
 
     base_url = f'https://{owner}.github.io/{repo}'
     figure_dir = os.path.join(os.path.dirname(__file__), '..', 'figure')
     os.makedirs(figure_dir, exist_ok=True)
 
-    print(f'Generating QR codes for: {base_url}')
+    print(f'正在生成二维码: {base_url}')
 
-    for name in conf_names:
+    for name in CONF_NAMES:
         url = f'{base_url}/rules/{name}.conf'
         img = qrcode.make(url, border=2)
         output_path = os.path.join(figure_dir, f'{name}.png')
         img.save(output_path)
         print(f'  -> {name}.png')
 
-    print(f'Done. {len(conf_names)} QR codes generated.')
+    print(f'完成，共生成 {len(CONF_NAMES)} 张二维码。')
 
 
 if __name__ == '__main__':

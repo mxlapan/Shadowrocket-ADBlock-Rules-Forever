@@ -1,7 +1,7 @@
 #!/bin/bash
+set -e
 
-Path=./factory
-cd $Path
+cd ./factory
 
 python3 ad.py
 python3 gfwlist.py

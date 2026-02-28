@@ -1,93 +1,69 @@
-# -*- coding: utf-8 -*-
+"""提取广告规则：从 Adblock 规则源中提取全域禁止的域名和 IP。"""
 
-#
-# 提取广告规则，并且只提取对全域禁止的那种规则
-#
+# 参考 Adblock 广告规则格式：https://adblockplus.org/filters
 
-# 参考 ADB 广告规则格式：https://adblockplus.org/filters
-
-import time
-import sys
-import requests
 import re
+import sys
+import time
 
+import requests
 
-rules_url = [
+# 广告规则源
+RULES_URLS = [
     # EasyList China
     'https://easylist-downloads.adblockplus.org/easylistchina.txt',
     # EasyList + China
     'https://easylist-downloads.adblockplus.org/easylistchina+easylist.txt',
-    # 乘风 广告过滤规则
+    # 乘风广告过滤规则
     'https://raw.githubusercontent.com/xinggsf/Adblock-Plus-Rule/master/rule.txt',
     # Peter Lowe 广告和隐私跟踪域名
     'https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus;showintro=0',
 ]
 
 rule = ''
+domains = []  # 包含域名和 IP
 
-# contain both domains and ips
-domains = []
+# 下载规则源
+for rule_url in RULES_URLS:
+    print('正在下载... ' + rule_url)
 
-
-for rule_url in rules_url:
-    print('loading... ' + rule_url)
-
-    # get rule text
     success = False
-    try_times = 0
     r = None
-    while try_times < 5 and not success:
+    for _ in range(5):
         r = requests.get(rule_url)
-        if r.status_code != 200:
-            time.sleep(1)
-            try_times = try_times + 1
-        else:
+        if r.status_code == 200:
             success = True
             break
+        time.sleep(1)
 
     if not success:
-        sys.exit('error in request %s\n\treturn code: %d' % (rule_url, r.status_code) )
+        sys.exit(f'请求失败 {rule_url}\n\t状态码: {r.status_code}')
 
-    rule = rule + r.text + '\n'
+    rule += r.text + '\n'
 
-# except rules
+# 读取忽略列表
 ignore = []
-ad_ignore = sys.stdout
 try:
-    if sys.version_info.major == 3:
-        ad_ignore = open('resultant/ad_ignore.list', 'r', encoding='utf-8')
-    else:
-        ad_ignore = open('resultant/ad_ignore.list', 'r')
-except:
+    with open('data/ad_ignore.list', 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                ignore.append(line)
+except FileNotFoundError:
     pass
-for ig in ad_ignore.readlines():
-    if ig[0] != '#' and ig != '\n':
-        ignore.append(ig.strip())
 
-# parse rule
-rule = rule.split('\n')
-for row in rule:
+# 解析规则
+for row in rule.split('\n'):
     row = row.strip()
     row0 = row
 
-    # 处理广告例外规则
-
+    # 处理广告例外规则（@@）
     if row.startswith('@@'):
-        i = 0
-        while i < len(domains):
-            domain = domains[i]
-            if domain in row:
-                del domains[i]
-            else:
-                i = i + 1
-
+        domains = [d for d in domains if d not in row]
         continue
 
-
-    # 处理广告黑名单规则
-
-    # 直接跳过
-    if row=='' or row.startswith('!') or "$" in row or "##" in row:
+    # 跳过无关行
+    if not row or row.startswith('!') or '$' in row or '##' in row:
         continue
 
     # 清除前缀
@@ -97,42 +73,30 @@ for row in rule:
 
     # 清除后缀
     row = row.rstrip('/*')
-    if row[-1] == '^':
-        # row = '.'+row
+    if row.endswith('^'):
         row = row.rstrip('^')
     row = re.sub(r':\d{2,5}$', '', row)  # 清除端口
 
     # 不能含有的字符
     if re.search(r'[/^:*]', row):
-        print('ignore: '+row0)
+        print('忽略: ' + row0)
         continue
-    
-    # 去除 ignore 中的内容
+
+    # 去除忽略列表中的内容
     if row in ignore:
         continue
 
     # 只匹配域名或 IP
-    if re.match(r'^\.?[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})*\.[a-zA-Z0-9][-a-zA-Z0-9]{1,}$', row) or re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', row):
+    if re.match(r'^\.?[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})*\.[a-zA-Z0-9][-a-zA-Z0-9]{1,}$', row) \
+       or re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', row):
         domains.append(row)
 
-print('done.')
+print('解析完成。')
 
+# 去重排序并写入文件
+domains = sorted(set(domains))
 
-# write into files
-
-file_ad = sys.stdout
-try:
-    if sys.version_info.major == 3:
-        file_ad = open('resultant/ad.list', 'w', encoding='utf-8')
-    else:
-        file_ad = open('resultant/ad.list', 'w')
-except:
-    pass
-
-file_ad.write('# adblock rules refresh time: ' + time.strftime("%Y-%m-%d %H:%M:%S") + '\n')
-
-domains = list( set(domains) )
-domains.sort()
-
-for item in domains:
-    file_ad.write(item + '\n')
+with open('resultant/ad.list', 'w', encoding='utf-8') as f:
+    f.write('# adblock rules refresh time: ' + time.strftime('%Y-%m-%d %H:%M:%S') + '\n')
+    for item in domains:
+        f.write(item + '\n')

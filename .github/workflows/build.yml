@@ -47,6 +47,7 @@ jobs:
           cp LICENSE deploy/
 
       - name: Deploy to gh-pages
+        if: github.event_name != 'pull_request'
         run: |
           cd deploy
           git init

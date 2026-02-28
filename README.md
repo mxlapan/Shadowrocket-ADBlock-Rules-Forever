@@ -1,25 +1,30 @@
 # Shadowrocket-ADBlock-Rules-Forever
 
+[![Build and Deploy](https://github.com/mxlapan/Shadowrocket-ADBlock-Rules-Forever/actions/workflows/build.yml/badge.svg)](https://github.com/mxlapan/Shadowrocket-ADBlock-Rules-Forever/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/github/license/mxlapan/Shadowrocket-ADBlock-Rules-Forever)](LICENSE)
+
 iOS [Shadowrocket](https://liguangming.com/Shadowrocket) 分流规则，支持广告过滤，每日自动更新。
 
-> 本项目 Fork 自 [Johnshall/Shadowrocket-ADBlock-Rules-Forever](https://github.com/Johnshall/Shadowrocket-ADBlock-Rules-Forever)，进行了定制化修改。原项目基于 [h2y/Shadowrocket-ADBlock-Rules](https://github.com/h2y/Shadowrocket-ADBlock-Rules)。
+> Fork 自 [Johnshall/Shadowrocket-ADBlock-Rules-Forever](https://github.com/Johnshall/Shadowrocket-ADBlock-Rules-Forever)，原项目基于 [h2y/Shadowrocket-ADBlock-Rules](https://github.com/h2y/Shadowrocket-ADBlock-Rules)。
 
 ## 特性
 
-- 黑名单由 [GFWList](https://github.com/gfwlist/gfwlist) + [Greatfire Analyzer](https://github.com/Loyalsoldier/cn-blocked-domain) 自动生成
-- 广告过滤整合 `EasyList`、`EasyList China`、`Peter Lowe`、`乘风规则`，自动去重
-- 包含 iOS 端网页广告、App 广告的过滤规则
-- [Apple 及 CDN 域名](https://raw.githubusercontent.com/felixonmars/dnsmasq-china-list/master/apple.china.conf) 直连优化
+- **黑名单**由 [GFWList](https://github.com/gfwlist/gfwlist) + [Greatfire Analyzer](https://github.com/Loyalsoldier/cn-blocked-domain) 自动生成
+- **广告过滤**整合 EasyList、EasyList China、Peter Lowe、乘风规则，自动去重
+- 包含 iOS 端**网页广告、App 广告**的过滤规则
+- [Apple 及 CDN 域名](https://raw.githubusercontent.com/felixonmars/dnsmasq-china-list/master/apple.china.conf)直连优化
 - 提供多种规则方案，自由切换
 - 懒人配置（同步自 [LOWERTOP/Shadowrocket](https://github.com/LOWERTOP/Shadowrocket)）
 - 规则每日北京时间 8:00 自动构建发布
+
+---
 
 ## 规则列表
 
 ![规则选择指南](https://mxlapan.github.io/Shadowrocket-ADBlock-Rules-Forever/figure/guide.png)
 
-| 规则 | 代理 | 直连 |
-|------|------|------|
+| 规则 | 代理流量 | 直连流量 |
+|:-----|:---------|:---------|
 | [黑名单 + 去广告](#黑名单过滤--广告) | 被墙网站 (GFWList) | 正常网站 |
 | [黑名单](#黑名单过滤) | 同上 | 同上 |
 | [白名单 + 去广告](#白名单过滤--广告) | 其他网站 | top500 可直连网站、中国网站 |
@@ -35,6 +40,8 @@ iOS [Shadowrocket](https://liguangming.com/Shadowrocket) 分流规则，支持�
 | [懒人配置（含策略组）](#懒人配置含策略组) | 国外网站 | 国内网站 |
 
 > 以上所有规则，局域网内请求均直连。可下载多个规则切换使用。
+
+---
 
 ## 使用方法
 
@@ -219,40 +226,56 @@ https://mxlapan.github.io/Shadowrocket-ADBlock-Rules-Forever/rules/lazy_group.co
 配置 → 使用中的规则 ℹ️ → HTTPS 解密 → 开启 → 安装证书 → 信任证书。
 </details>
 
+---
+
 ## 项目结构
 
 ```
-main (源代码分支)
-├── factory/          # 构建脚本和源数据
-│   ├── ad.py         # 广告规则生成
-│   ├── gfwlist.py    # GFWList 解析
-│   ├── build_confs.py # 规则文件生成
-│   ├── gen_qrcode.py # 二维码自动生成
-│   ├── template/     # 规则模板
-│   ├── resultant/    # 中间数据
-│   └── manual_*.txt  # 手动维护的规则
-├── figure/
-│   └── guide.png     # 规则选择指南
+main（源代码分支）
 ├── .github/workflows/
-│   └── build.yml     # 每日自动构建
-└── readme.md
+│   ├── build.yml             # 每日自动构建 & 部署
+│   └── close-issues.yml      # 自动关闭过期 Issue
+├── factory/                  # 构建车间
+│   ├── ad.py                 # 广告规则提取
+│   ├── gfwlist.py            # GFWList 解析
+│   ├── build_confs.py        # 规则文件生成
+│   ├── gen_qrcode.py         # 二维码生成
+│   ├── auto_build.sh         # CI 构建入口
+│   ├── top500_manual.py      # 手动工具：top500 可达性评估
+│   ├── data/                 # 源数据（手动维护）
+│   │   ├── manual_*.txt      # 直连 / 代理 / 屏蔽 / GFWList 补充规则
+│   │   ├── ad_ignore.list    # 广告白名单
+│   │   └── top500_*.list     # top500 网站分类
+│   ├── template/             # 规则模板（sr_head / sr_foot / sr_*.txt）
+│   ├── resultant/            # 构建产物（CI 生成，已 gitignore）
+│   └── README.md             # 开发说明
+├── figure/
+│   └── guide.png             # 规则选择指南（二维码由 CI 生成）
+├── README.md
+├── LICENSE
+├── requirements.txt
+└── .gitignore
 
-gh-pages (部署分支，自动生成)
-├── rules/            # 规则文件 (.conf)
-├── figure/           # 二维码图片
-├── readme.md
+gh-pages（部署分支，自动生成）
+├── rules/                    # 规则文件 (.conf)
+├── figure/                   # 二维码图片
+├── README.md
 └── LICENSE
 ```
 
+---
+
 ## 贡献
 
-修改 [factory/](https://github.com/mxlapan/Shadowrocket-ADBlock-Rules-Forever/tree/main/factory) 下的 `manual_*.txt` 文件，PR 请提交至 `main` 分支。
+修改 [factory/data/](https://github.com/mxlapan/Shadowrocket-ADBlock-Rules-Forever/tree/main/factory/data) 下的 `manual_*.txt` 文件，PR 请提交至 `main` 分支。
 
-**定制自己的规则：** Fork 本仓库 → 启用 Actions 即可。
+**定制自己的规则：** Fork 本仓库，启用 Actions 即可自动构建。
 
 ## 问题反馈
 
 欢迎在 [Issues](https://github.com/mxlapan/Shadowrocket-ADBlock-Rules-Forever/issues) 中反馈。
+
+---
 
 ## 致谢
 
@@ -261,7 +284,3 @@ gh-pages (部署分支，自动生成)
 - [gfwlist](https://github.com/gfwlist/gfwlist) / [Greatfire Analyzer](https://github.com/Loyalsoldier/cn-blocked-domain)
 - [乘风广告过滤规则](https://github.com/xinggsf/Adblock-Plus-Rule) / [EasyList China](https://adblockplus.org/) / [Peter Lowe](https://pgl.yoyo.org/)
 - [blackmatrix7/ios_rule_script](https://github.com/blackmatrix7/ios_rule_script) / [LOWERTOP/Shadowrocket](https://github.com/LOWERTOP/Shadowrocket)
-
-## License
-
-[MIT](LICENSE)

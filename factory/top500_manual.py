@@ -1,24 +1,23 @@
-# -*- coding: utf-8 -*-
+"""
+手动工具：对 top500 网站进行可达性评估，判断需要直连或代理。
+该脚本应当在国内网络环境中运行，不参与 CI 自动构建。
+"""
 
-'''
-此脚本用于对 top500_manual.list 中网站进行评估，判断需要直连或代理
-该脚本应当在内网环境中运行
-'''
+import csv
+import threading
+import time
 
 import requests
-import time
-import threading
-import csv
 
 now_time = time.strftime("%Y-%m-%d %H:%M:%S")
 url = 'https://moz.com/top-500/download/?table=top500Domains'
-r = requests.get(url) 
-with open("resultant/top500Domains.csv", "wb") as raw:
+r = requests.get(url)
+with open("data/top500Domains.csv", "wb") as raw:
     raw.write(r.content)
 
-with open('resultant/top500Domains.csv','r') as csvfile:
+with open('data/top500Domains.csv', 'r') as csvfile:
     reader = csv.reader(csvfile)
-    with open("resultant/top500_manual.list", "w") as file_domain_in:
+    with open("data/top500_manual.list", "w") as file_domain_in:
         file_domain_in.write('# top500 proxy list update time: ' + now_time + '\n')
         for domain_i,rows in enumerate(reader):
             if domain_i != 1:
@@ -27,9 +26,9 @@ with open('resultant/top500Domains.csv','r') as csvfile:
 
 print('Get top500 list successfully...\n\n')
 
-# Read top500        
-domains = [] 
-with open("resultant/top500_manual.list", "r", encoding='utf-8') as f:
+# Read top500
+domains = []
+with open("data/top500_manual.list", "r", encoding='utf-8') as f:
     for domain in f.readlines():
         if domain[0] == "#":
             continue
@@ -88,8 +87,8 @@ while scaner_thread_num:
 
 
 # write files
-file_proxy = open('resultant/top500_proxy.list', 'w', encoding='utf-8')
-file_direct = open('resultant/top500_direct.list', 'w', encoding='utf-8')
+file_proxy = open('data/top500_proxy.list', 'w', encoding='utf-8')
+file_direct = open('data/top500_direct.list', 'w', encoding='utf-8')
 
 file_proxy.write('# top500 proxy list update time: ' + now_time + '\n')
 file_direct.write('# top500 direct list update time: ' + now_time + '\n')

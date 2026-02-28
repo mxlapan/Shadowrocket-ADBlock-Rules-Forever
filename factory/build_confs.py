@@ -1,13 +1,28 @@
-# -*- coding: utf-8 -*-
-
+import os
 import re
 import time
-import os
 
+# IPv6 地址匹配正则
+_IPV6_PATTERN = re.compile(
+    r'((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))'
+    r'|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)'
+    r'(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))'
+    r'|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)'
+    r'(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))'
+    r'|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d'
+    r'|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))'
+    r'|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]'
+    r'|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))'
+    r'|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]'
+    r'|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))'
+    r'|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]'
+    r'|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))'
+    r'|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)'
+    r'(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?'
+)
 
-# confs names in template/ and ../
-# except sr_head and sr_foot
-confs_names = [
+# 规则配置名称列表（对应 template/ 下的模板，不含 sr_head 和 sr_foot）
+CONF_NAMES = [
     'sr_top500_banlist_ad',
     'sr_top500_banlist',
     'sr_top500_whitelist_ad',
@@ -17,79 +32,76 @@ confs_names = [
     'sr_proxy_banad',
     'sr_cnip', 'sr_cnip_ad',
     'sr_backcn', 'sr_backcn_ad',
-    'sr_ad_only'
+    'sr_ad_only',
 ]
 
 
-def getRulesStringFromFile(path, kind):
-    file = open(path, 'r', encoding='utf-8')
-    contents = file.readlines()
-    ret = ''
+def get_rules_from_file(path, kind):
+    """读取规则列表文件，转换为 Shadowrocket 规则格式。"""
+    with open(path, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
 
-    for content in contents:
-        content = content.strip('\r\n')
-        if not len(content):
+    result = ''
+    for line in lines:
+        line = line.strip('\r\n')
+        if not line:
             continue
 
-        if content.startswith('#'):
-            ret += content + '\n'
-        else:
-            prefix = 'DOMAIN-SUFFIX'
-            if re.match(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', content):
-                prefix = 'IP-CIDR'
-                if '/' not in content:
-                    content += '/32'
-            elif re.match(r'((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?', content):
-                prefix = 'IP-CIDR'
-                if '/' not in content:
-                    content += '/128'
-            elif '.' not in content and len(content) > 1:
-                prefix = 'DOMAIN-KEYWORD'
+        if line.startswith('#'):
+            result += line + '\n'
+            continue
 
-            ret += prefix + ',%s,%s\n' % (content, kind)
+        # 判断规则类型：IPv4 / IPv6 / 关键字 / 域名后缀
+        prefix = 'DOMAIN-SUFFIX'
+        if re.match(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', line):
+            prefix = 'IP-CIDR'
+            if '/' not in line:
+                line += '/32'
+        elif _IPV6_PATTERN.match(line):
+            prefix = 'IP-CIDR'
+            if '/' not in line:
+                line += '/128'
+        elif '.' not in line and len(line) > 1:
+            prefix = 'DOMAIN-KEYWORD'
 
-    return ret
+        result += f'{prefix},{line},{kind}\n'
 
-
-# get head and foot
-str_head = open('template/sr_head.txt', 'r', encoding='utf-8').read()
-str_foot = open('template/sr_foot.txt', 'r', encoding='utf-8').read()
+    return result
 
 
-# make values
-values = {}
+# 读取公共头部和尾部模板
+with open('template/sr_head.txt', 'r', encoding='utf-8') as f:
+    str_head = f.read()
+with open('template/sr_foot.txt', 'r', encoding='utf-8') as f:
+    str_foot = f.read()
 
-values['build_time'] = time.strftime("%Y-%m-%d %H:%M:%S")
+# 构建模板变量
+values = {
+    'build_time':    time.strftime('%Y-%m-%d %H:%M:%S'),
+    'top500_proxy':  get_rules_from_file('data/top500_proxy.list', 'Proxy'),
+    'top500_direct': get_rules_from_file('data/top500_direct.list', 'Direct'),
+    'ad':            get_rules_from_file('resultant/ad.list', 'Reject'),
+    'manual_direct': get_rules_from_file('data/manual_direct.txt', 'Direct'),
+    'manual_proxy':  get_rules_from_file('data/manual_proxy.txt', 'Proxy'),
+    'manual_reject': get_rules_from_file('data/manual_reject.txt', 'Reject'),
+    'gfwlist':       get_rules_from_file('resultant/gfw.list', 'Proxy')
+                   + get_rules_from_file('data/manual_gfwlist.txt', 'Proxy'),
+}
 
-values['top500_proxy']  = getRulesStringFromFile('resultant/top500_proxy.list', 'Proxy')
-values['top500_direct'] = getRulesStringFromFile('resultant/top500_direct.list', 'Direct')
-
-values['ad'] = getRulesStringFromFile('resultant/ad.list', 'Reject')
-
-values['manual_direct'] = getRulesStringFromFile('manual_direct.txt', 'Direct')
-values['manual_proxy']  = getRulesStringFromFile('manual_proxy.txt', 'Proxy')
-values['manual_reject'] = getRulesStringFromFile('manual_reject.txt', 'Reject')
-
-values['gfwlist'] = getRulesStringFromFile('resultant/gfw.list', 'Proxy') \
-                  + getRulesStringFromFile('manual_gfwlist.txt', 'Proxy')
-
-
-# make confs
+# 生成规则文件
 rules_dir = os.path.join('..', 'rules')
 os.makedirs(rules_dir, exist_ok=True)
 
-for conf_name in confs_names:
-    file_template = open('template/'+conf_name+'.txt', 'r', encoding='utf-8')
-    template = file_template.read()
+for conf_name in CONF_NAMES:
+    with open(f'template/{conf_name}.txt', 'r', encoding='utf-8') as f:
+        template = f.read()
 
     if conf_name != 'sr_ad_only':
         template = str_head + template + str_foot
 
-    file_output = open(os.path.join(rules_dir, conf_name+'.conf'), 'w', encoding='utf-8')
+    # 替换模板变量 {{xxx}}
+    for mark in re.findall(r'{{(.+)}}', template):
+        template = template.replace('{{' + mark + '}}', values[mark])
 
-    marks = re.findall(r'{{(.+)}}', template)
-
-    for mark in marks:
-        template = template.replace('{{'+mark+'}}', values[mark])
-
-    file_output.write(template)
+    with open(os.path.join(rules_dir, f'{conf_name}.conf'), 'w', encoding='utf-8') as f:
+        f.write(template)
