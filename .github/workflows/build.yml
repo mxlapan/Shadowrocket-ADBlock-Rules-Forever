@@ -1,0 +1,55 @@
+name: Build and Deploy
+
+on:
+  schedule:
+    # 每日北京时间 8:00（UTC 0:00）
+    - cron: '0 0 * * *'
+
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install requirements
+        run: pip3 install -r requirements.txt
+
+      - name: Build rules
+        run: ./factory/auto_build.sh
+
+      - name: Download lazy rules
+        run: |
+          curl -fSL -o rules/lazy.conf https://raw.githubusercontent.com/LOWERTOP/Shadowrocket/main/lazy.conf
+          curl -fSL -o rules/lazy_group.conf https://raw.githubusercontent.com/LOWERTOP/Shadowrocket/main/lazy_group.conf
+
+      - name: Prepare deploy
+        run: |
+          mkdir -p deploy
+          cp -r rules deploy/rules
+          cp -r figure deploy/figure
+          cp readme.md deploy/
+          cp LICENSE deploy/
+
+      - name: Deploy to gh-pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: deploy
+          commit-message: 'Nightly build'
+          single-commit: true

@@ -1,8 +1,8 @@
 /.idea
 test.py
 
-# 构建产物（由 CI 自动生成并部署到 release 分支）
-*.conf
+# 构建产物（由 CI 自动生成并部署到 gh-pages 分支）
+rules/
 figure/*.png
 !figure/guide.png
 factory/resultant/ad.list

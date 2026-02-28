@@ -2,6 +2,7 @@
 
 import re
 import time
+import os
 
 
 # confs names in template/ and ../
@@ -74,14 +75,17 @@ values['gfwlist'] = getRulesStringFromFile('resultant/gfw.list', 'Proxy') \
 
 
 # make confs
+rules_dir = os.path.join('..', 'rules')
+os.makedirs(rules_dir, exist_ok=True)
+
 for conf_name in confs_names:
     file_template = open('template/'+conf_name+'.txt', 'r', encoding='utf-8')
     template = file_template.read()
-  
+
     if conf_name != 'sr_ad_only':
         template = str_head + template + str_foot
 
-    file_output = open('../'+conf_name+'.conf', 'w', encoding='utf-8')
+    file_output = open(os.path.join(rules_dir, conf_name+'.conf'), 'w', encoding='utf-8')
 
     marks = re.findall(r'{{(.+)}}', template)
 

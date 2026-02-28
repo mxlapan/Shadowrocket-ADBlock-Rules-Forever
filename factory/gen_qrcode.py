@@ -66,8 +66,8 @@ def generate_qrcodes():
     repo = get_repo_name()
 
     if not owner:
-        print('Warning: Could not detect GitHub owner, using default "Johnshall"')
-        owner = 'Johnshall'
+        print('Warning: Could not detect GitHub owner, using default "mxlapan"')
+        owner = 'mxlapan'
 
     base_url = f'https://{owner}.github.io/{repo}'
     figure_dir = os.path.join(os.path.dirname(__file__), '..', 'figure')
@@ -76,7 +76,7 @@ def generate_qrcodes():
     print(f'Generating QR codes for: {base_url}')
 
     for name in conf_names:
-        url = f'{base_url}/{name}.conf'
+        url = f'{base_url}/rules/{name}.conf'
         img = qrcode.make(url, border=2)
         output_path = os.path.join(figure_dir, f'{name}.png')
         img.save(output_path)
