@@ -28,7 +28,7 @@ jobs:
 
       - name: Update lazy rules
         run: |
-          rm lazy.conf lazy_group.conf
+          rm -f lazy.conf lazy_group.conf
           curl -O https://raw.githubusercontent.com/LOWERTOP/Shadowrocket/main/lazy.conf
           curl -O https://raw.githubusercontent.com/LOWERTOP/Shadowrocket/main/lazy_group.conf
 
