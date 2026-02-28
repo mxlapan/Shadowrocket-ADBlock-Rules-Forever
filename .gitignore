@@ -1,2 +1,7 @@
 /.idea
 test.py
+
+# 构建产物（由 CI 自动生成并部署到 release 分支）
+*.conf
+figure/*.png
+!figure/guide.png
