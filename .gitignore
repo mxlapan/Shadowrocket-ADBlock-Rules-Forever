@@ -5,3 +5,6 @@ test.py
 *.conf
 figure/*.png
 !figure/guide.png
+factory/resultant/ad.list
+factory/resultant/gfw.list
+factory/resultant/gfw_unhandle.log
